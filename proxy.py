@@ -10,7 +10,8 @@ import urllib.request
 
 PORT = 8080
 OLLAMA_URL = "http://localhost:11434/api/chat"
-MODEL = "llama3.2"
+OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
+DEFAULT_MODEL = "llama3.2"
 
 class Handler(http.server.BaseHTTPRequestHandler):
 
@@ -41,6 +42,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_response(404)
                 self.end_headers()
                 self.wfile.write(b"Pon generador_casos_prueba.html en la misma carpeta")
+
+        elif self.path == "/v1/models":
+            try:
+                req = urllib.request.Request(OLLAMA_TAGS_URL, method="GET")
+                with urllib.request.urlopen(req, timeout=3) as r:
+                    result = json.loads(r.read())
+                models = [m["name"] for m in result.get("models", [])]
+                if not models:
+                    models = [DEFAULT_MODEL]
+            except Exception:
+                models = [DEFAULT_MODEL]
+
+            payload = json.dumps({"models": models}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_cors()
+            self.end_headers()
+            self.wfile.write(payload)
+
         else:
             self.send_response(404)
             self.end_headers()
@@ -51,9 +71,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(length))
 
             messages = body.get("messages", [])
+            model = body.get("model") or DEFAULT_MODEL
 
             ollama_body = json.dumps({
-                "model": MODEL,
+                "model": model,
                 "messages": messages,
                 "stream": False
             }).encode()
@@ -92,7 +113,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     print(f"✅  Servidor en http://localhost:{PORT}")
-    print(f"    Usando Ollama con modelo: {MODEL}")
+    print(f"    Modelos disponibles via /v1/models")
     print(f"    Asegúrate de que Ollama esté corriendo (ollama serve)")
     with http.server.HTTPServer(("", PORT), Handler) as server:
         server.serve_forever()
