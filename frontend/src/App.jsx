@@ -57,13 +57,13 @@ function App() {
     setCurrentConversationId(id);
   };
 
-  const handleSendMessage = async (content) => {
+  const handleSendMessage = async (content, imageDataUrl = null) => {
     if (!currentConversationId) return;
 
     setIsLoading(true);
     try {
       // Optimistically add user message to UI
-      const userMessage = { role: 'user', content };
+      const userMessage = { role: 'user', content, imageDataUrl };
       setCurrentConversation((prev) => ({
         ...prev,
         messages: [...prev.messages, userMessage],
@@ -151,12 +151,10 @@ function App() {
             break;
 
           case 'title_complete':
-            // Reload conversations to get updated title
             loadConversations();
             break;
 
           case 'complete':
-            // Stream complete, reload conversations list
             loadConversations();
             setIsLoading(false);
             break;
@@ -169,7 +167,7 @@ function App() {
           default:
             console.log('Unknown event type:', eventType);
         }
-      });
+      }, imageDataUrl);
     } catch (error) {
       console.error('Failed to send message:', error);
       // Remove optimistic messages on error

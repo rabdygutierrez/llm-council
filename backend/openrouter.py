@@ -2,29 +2,32 @@
 
 import httpx
 from typing import List, Dict, Any, Optional
-from .config import OPENROUTER_API_KEY, OPENROUTER_API_URL
+from .config import OPENROUTER_API_URL
 
 
 async def query_model(
     model: str,
     messages: List[Dict[str, str]],
-    timeout: float = 120.0
+    timeout: float = 120.0,
+    image_base64: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
-    Query a single model via OpenRouter API.
-
-    Args:
-        model: OpenRouter model identifier (e.g., "openai/gpt-4o")
-        messages: List of message dicts with 'role' and 'content'
-        timeout: Request timeout in seconds
-
-    Returns:
-        Response dict with 'content' and optional 'reasoning_details', or None if failed
+    Query a single model via Ollama local API (OpenAI-compatible endpoint).
+    If image_base64 is provided (data URL), attaches it to the last user message
+    as multimodal content for vision-capable models.
     """
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
     }
+
+    if image_base64:
+        messages = list(messages)
+        last = dict(messages[-1])
+        last['content'] = [
+            {"type": "text", "text": last['content']},
+            {"type": "image_url", "image_url": {"url": image_base64}},
+        ]
+        messages = messages[:-1] + [last]
 
     payload = {
         "model": model,
@@ -55,22 +58,15 @@ async def query_model(
 
 async def query_models_parallel(
     models: List[str],
-    messages: List[Dict[str, str]]
+    messages: List[Dict[str, str]],
+    image_base64: Optional[str] = None,
 ) -> Dict[str, Optional[Dict[str, Any]]]:
     """
-    Query multiple models in parallel.
-
-    Args:
-        models: List of OpenRouter model identifiers
-        messages: List of message dicts to send to each model
-
-    Returns:
-        Dict mapping model identifier to response dict (or None if failed)
+    Query multiple models in parallel, optionally with an image.
     """
     import asyncio
 
-    # Create tasks for all models
-    tasks = [query_model(model, messages) for model in models]
+    tasks = [query_model(model, messages, image_base64=image_base64) for model in models]
 
     # Wait for all to complete
     responses = await asyncio.gather(*tasks)

@@ -5,20 +5,15 @@ from .openrouter import query_models_parallel, query_model
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
 
-async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
+async def stage1_collect_responses(user_query: str, image_base64: str = None) -> List[Dict[str, Any]]:
     """
     Stage 1: Collect individual responses from all council models.
-
-    Args:
-        user_query: The user's question
-
-    Returns:
-        List of dicts with 'model' and 'response' keys
+    If image_base64 is provided, sends it along with the query (vision models only).
     """
     messages = [{"role": "user", "content": user_query}]
 
     # Query all models in parallel
-    responses = await query_models_parallel(COUNCIL_MODELS, messages)
+    responses = await query_models_parallel(COUNCIL_MODELS, messages, image_base64=image_base64)
 
     # Format results
     stage1_results = []
@@ -293,18 +288,12 @@ Title:"""
     return title
 
 
-async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
+async def run_full_council(user_query: str, image_base64: str = None) -> Tuple[List, List, Dict, Dict]:
     """
     Run the complete 3-stage council process.
-
-    Args:
-        user_query: The user's question
-
-    Returns:
-        Tuple of (stage1_results, stage2_results, stage3_result, metadata)
     """
-    # Stage 1: Collect individual responses
-    stage1_results = await stage1_collect_responses(user_query)
+    # Stage 1: Collect individual responses (with optional image)
+    stage1_results = await stage1_collect_responses(user_query, image_base64)
 
     # If no models responded successfully, return error
     if not stage1_results:

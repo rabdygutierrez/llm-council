@@ -11,7 +11,56 @@ export default function ChatInterface({
   isLoading,
 }) {
   const [input, setInput] = useState('');
+  const [attachedFile, setAttachedFile] = useState(null);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const ACCEPTED_TYPES = '.txt,.md,.py,.js,.ts,.jsx,.tsx,.json,.csv,.html,.css,.yaml,.yml,.toml,.sql,.sh,.env,.xml,.pdf,.png,.jpg,.jpeg,.webp,.gif';
+
+  const extractPdfText = async (file) => {
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.mjs',
+      import.meta.url
+    ).toString();
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pages = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      pages.push(content.items.map((item) => item.str).join(' '));
+    }
+    return pages.join('\n\n');
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+    if (file.type === 'application/pdf') {
+      try {
+        const content = await extractPdfText(file);
+        setAttachedFile({ name: file.name, content, type: 'text' });
+      } catch (err) {
+        alert('No se pudo leer el PDF: ' + err.message);
+      }
+    } else if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setAttachedFile({ name: file.name, content: ev.target.result, type: 'image' });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setAttachedFile({ name: file.name, content: ev.target.result, type: 'text' });
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const removeFile = () => setAttachedFile(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -23,10 +72,17 @@ export default function ChatInterface({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (input.trim() && !isLoading) {
-      onSendMessage(input);
-      setInput('');
+    if (!input.trim() || isLoading) return;
+    if (attachedFile?.type === 'image') {
+      onSendMessage(input, attachedFile.content);
+    } else if (attachedFile?.type === 'text') {
+      const message = `[Archivo adjunto: ${attachedFile.name}]\n\`\`\`\n${attachedFile.content}\n\`\`\`\n\n${input}`;
+      onSendMessage(message, null);
+    } else {
+      onSendMessage(input, null);
     }
+    setInput('');
+    setAttachedFile(null);
   };
 
   const handleKeyDown = (e) => {
@@ -63,6 +119,13 @@ export default function ChatInterface({
                 <div className="user-message">
                   <div className="message-label">You</div>
                   <div className="message-content">
+                    {msg.imageDataUrl && (
+                      <img
+                        src={msg.imageDataUrl}
+                        alt="adjunto"
+                        className="attached-image"
+                      />
+                    )}
                     <div className="markdown-content">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
@@ -122,22 +185,48 @@ export default function ChatInterface({
 
       {conversation.messages.length === 0 && (
         <form className="input-form" onSubmit={handleSubmit}>
-          <textarea
-            className="message-input"
-            placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isLoading}
-            rows={3}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_TYPES}
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
           />
-          <button
-            type="submit"
-            className="send-button"
-            disabled={!input.trim() || isLoading}
-          >
-            Send
-          </button>
+          <div className="input-area">
+            {attachedFile && (
+              <div className="file-badge">
+                <span>📎 {attachedFile.name}</span>
+                <button type="button" className="file-remove" onClick={removeFile}>×</button>
+              </div>
+            )}
+            <textarea
+              className="message-input"
+              placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isLoading}
+              rows={3}
+            />
+          </div>
+          <div className="button-group">
+            <button
+              type="button"
+              className="attach-button"
+              onClick={() => fileInputRef.current.click()}
+              disabled={isLoading}
+              title="Adjuntar archivo de texto"
+            >
+              📎
+            </button>
+            <button
+              type="submit"
+              className="send-button"
+              disabled={!input.trim() || isLoading}
+            >
+              Send
+            </button>
+          </div>
         </form>
       )}
     </div>

@@ -109,6 +109,72 @@
   background: #fafafa;
 }
 
+.input-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.file-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #e8f0fe;
+  border: 1px solid #c5d8fb;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  color: #2c5eb8;
+  width: fit-content;
+}
+
+.file-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #2c5eb8;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.attach-button {
+  padding: 10px;
+  background: #ffffff;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.2s;
+  text-align: center;
+}
+
+.attach-button:hover:not(:disabled) {
+  background: #f0f0f0;
+}
+
+.attach-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.attached-image {
+  max-width: 320px;
+  max-height: 240px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  display: block;
+  border: 1px solid #d0e7ff;
+}
+
 .message-input {
   flex: 1;
   padding: 14px;
